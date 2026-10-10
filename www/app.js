@@ -3005,11 +3005,37 @@ const guestTokenFor = (orderNo) => String(state.guestTokens[String(orderNo || ''
 /* --------------------- 与本站服务端通信的小封装 --------------------- */
 
 /**
+ * API 域名解析（2026-10-10，Capacitor 原生 App 支持）
+ *
+ * 问题：App 内所有请求原本用相对路径 `/api/store/*`，在 Web 里指向前台域名没问题，
+ * 但在 Capacitor 壳里 origin 是 `https://localhost`，`/api/store/*` 会 404 并被
+ * WebView 回落到 index.html，于是 fetch 拿到 HTML，`response.json()` 抛
+ * “Unexpected token '<'”，表现为「App 里功能全点不了、商品不显示」。
+ *
+ * 方案：非 http(s) 的 origin（Capacitor 壳的特征）→ 把 /api/store/* 指到线上域名；
+ * 正常 Web 环境仍留空字符串走相对路径，零行为变化、不产生跨域。
+ *
+ * 覆盖方式（供测试或私有部署临时切换）：<meta name="mxq-api-base" content="https://…">
+ */
+const API_BASE = (() => {
+  const origin = location.origin || ''
+  // Capacitor / cordova 壳：origin 是 https://localhost 或 capacitor://localhost
+  if (!/^https?:\/\//i.test(origin)) {
+    const injected = document.querySelector('meta[name="mxq-api-base"]')?.content?.trim()
+    return injected || 'https://mxqshop.to'
+  }
+  return ''
+})()
+
+/** 把 /api/store/xxx 拼成带域名的绝对地址（API_BASE 为空则原样返回，走相对路径） */
+const apiUrl = (path) => `${API_BASE}${path}`
+
+/**
  * 调本站 /api/store/*。服务端出错时统一返回 { error }，
  * 这里把错误文本原样抛出，调用方直接拿来提示，不必各自解析。
  */
 async function apiJson(path, { method = 'GET', body } = {}) {
-  const response = await fetch(`/api/store${path}`, {
+  const response = await fetch(apiUrl(`/api/store${path}`), {
     method,
     headers: body ? { 'content-type': 'application/json' } : undefined,
     body: body ? JSON.stringify(body) : undefined,
@@ -5429,7 +5455,7 @@ async function loadQa(pid) {
     return
   }
   try {
-    const response = await fetch(`/api/store/qa/${Number(pid)}?limit=20`)
+    const response = await fetch(apiUrl(`/api/store/qa/${Number(pid)}?limit=20`))
     if (!response.ok) throw new Error('qa load failed')
     const data = await response.json()
     QA_CACHE.set(Number(pid), data)
@@ -5505,7 +5531,7 @@ async function submitQa(pid) {
   const btn = $('qa-submit')
   if (btn) btn.disabled = true
   try {
-    const response = await fetch('/api/store/qa', {
+    const response = await fetch(apiUrl('/api/store/qa'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ productId: Number(pid), question, name: nameInput ? nameInput.value.trim() : '' }),
@@ -5542,7 +5568,7 @@ async function openSizeGuide() {
     body.innerHTML = '<p style="padding:32px;text-align:center;color:#5a6a85">Loading size guide…</p>'
     openModal('size-guide-modal')
     try {
-      const response = await fetch(`/api/store/size-chart?id=${Number(product.id)}`)
+      const response = await fetch(apiUrl(`/api/store/size-chart?id=${Number(product.id)}`))
       const data = await response.json()
       const chart = data && data.size_chart
       if (Array.isArray(chart) && chart.length) {
@@ -5862,7 +5888,7 @@ async function paintShipsFrom(pid) {
   const box = document.getElementById('ships-from')
   if (!box || !pid) return
   try {
-    const response = await fetch(`/api/store/inventory/${Number(pid)}`)
+    const response = await fetch(apiUrl(`/api/store/inventory/${Number(pid)}`))
     if (!response.ok) return
     const data = await response.json()
     // 渲染期间用户可能已离开该商品
@@ -6015,7 +6041,7 @@ async function loadReviews(pid) {
     return
   }
   try {
-    const response = await fetch(`/api/store/reviews/${Number(pid)}?limit=5`)
+    const response = await fetch(apiUrl(`/api/store/reviews/${Number(pid)}?limit=5`))
     const data = await response.json()
     REVIEWS_CACHE.set(Number(pid), data)
     if (document.getElementById('reviews-section') === section) paintReviews(section, data, Number(pid))
@@ -6108,7 +6134,7 @@ async function submitReview() {
   const btn = document.getElementById('review-submit')
   if (btn) btn.disabled = true
   try {
-    const response = await fetch('/api/store/reviews', {
+    const response = await fetch(apiUrl('/api/store/reviews'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ productId: pid, rating: REVIEW_RATING, name, email, content, images: REVIEW_IMGS }),
@@ -6228,7 +6254,7 @@ async function mountUgc(pid) {
   if (!slot) return
   try {
     const query = pid ? `?productId=${Number(pid)}&limit=6` : '?limit=8'
-    const response = await fetch(`/api/store/marketing/ugc${query}`)
+    const response = await fetch(apiUrl(`/api/store/marketing/ugc${query}`))
     if (!response.ok) return
     const data = await response.json()
     if (document.getElementById('ugc-slot') !== slot) return
@@ -6433,6 +6459,218 @@ function renderFavoritesPage() {
   return `
     <h1 class="page-title">${t('favTitle')} <small class="muted">${t('favCount', items.length)}</small></h1>
     <div class="fav-list">${rows}</div>`
+}
+
+/* ============================================================
+ * #8 心愿单跨设备同步 + 订阅
+ * 现状：收藏（FAV_KEY）只存localStorage，换设备看不到。
+ * 这里加一层服务端同步（wishlists / wishlist_items），登录后跨设备一致；
+ * 未登录时用 guest token（下单时的浏览器凭据）兜底。
+ * 每条收藏可带订阅设置：降价到目标价提醒 + 到货通知 + 通知周期（即时/每日/每周）。
+ * ============================================================ */
+const WISHLIST_CACHE = { at: 0, data: null, inflight: null }
+
+const wlLabel = (zh, en) => (isZh(state.lang) ? zh : en)
+
+/** 拉心愿单（5 秒内复用，避免收藏页反复请求） */
+async function loadWishlist({ force = false } = {}) {
+  if (!force && WISHLIST_CACHE.data && Date.now() - WISHLIST_CACHE.at < 5000) return WISHLIST_CACHE.data
+  if (WISHLIST_CACHE.inflight) return WISHLIST_CACHE.inflight
+  const query = guestTokenForWishlist() ? `?token=${encodeURIComponent(guestTokenForWishlist())}` : ''
+  WISHLIST_CACHE.inflight = apiJson(`/wishlist${query}`)
+    .then((data) => {
+      WISHLIST_CACHE.at = Date.now()
+      WISHLIST_CACHE.data = data?.wishlist || null
+      return WISHLIST_CACHE.data
+    })
+    .catch(() => null)
+    .finally(() => {
+      WISHLIST_CACHE.inflight = null
+    })
+  return WISHLIST_CACHE.inflight
+}
+
+/** 拿一个可用于心愿单的凭据：登录用户走会话，未登录回落到最近一笔订单的 guest token */
+function guestTokenForWishlist() {
+  const first = state.favs.map((id) => guestTokenFor(String(state.orders?.[0]?.orderNo || ''))).find(Boolean)
+  return first || guestTokenFor('') || ''
+}
+
+/** 把 localStorage 收藏一次性同步到服务端（登录后调用），随后清掉本地副本避免重复 */
+async function syncWishlistFromLocal() {
+  const localIds = readIdList(FAV_KEY)
+  if (!localIds.length) return { moved: 0 }
+  const query = guestTokenForWishlist() ? `?token=${encodeURIComponent(guestTokenForWishlist())}` : ''
+  let moved = 0
+  for (const pid of localIds.slice(0, 60)) {
+    try {
+      const product = state.products.find((p) => Number(p.id) === Number(pid))
+      const res = await fetch(apiUrl('/api/store/wishlist/items'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          productId: Number(pid),
+          seenPriceUsd: product ? Number(product.sale_price ?? product.price_usd ?? 0) || null : null,
+          notifyOnPriceDrop: true,
+          notifyOnRestock: true,
+          notifyDigest: 'instant',
+          guestToken: guestTokenForWishlist(),
+        }),
+      })
+      if (res.ok) moved += 1
+    } catch {
+      /* 单条失败不阻断整批 */
+    }
+  }
+  if (moved > 0) {
+    try {
+      localStorage.removeItem(FAV_KEY)
+    } catch {}
+    state.favs = []
+    renderFavBadge()
+  }
+  WISHLIST_CACHE.at = 0
+  return { moved }
+}
+
+/** 心愿单订阅设置面板（单条商品的订阅配置） */
+function renderWishlistSubscribeRow(productId) {
+  const entry = (WISHLIST_CACHE.data?.items || []).find((i) => Number(i.productId) === Number(productId))
+  const target = entry?.targetPriceUsd || ''
+  const digest = entry?.notifyDigest || 'instant'
+  const product = state.products.find((p) => Number(p.id) === Number(productId))
+  const price = product ? Number(product.sale_price ?? product.price_usd ?? 0) : 0
+  return `
+    <div class="wl-sub" data-wl-sub="${productId}">
+      <button type="button" class="btn-ghost wl-sub-toggle" data-wl-toggle="${productId}">
+        ${entry ? wlLabel('已订阅 · 点击修改', 'Subscribed · edit') : wlLabel('降价/到货提醒', 'Price & restock alerts')}
+      </button>
+      <div class="wl-sub-panel" ${entry ? '' : 'hidden'}>
+        <label class="wl-sub-row">
+          <span>${wlLabel('目标价', 'Target price')}</span>
+          <input type="number" step="0.01" min="0" placeholder="${price ? price.toFixed(2) : '0.00'}"
+                 data-wl-target="${productId}" value="${target}" />
+        </label>
+        <label class="wl-sub-row">
+          <span>${wlLabel('通知方式', 'Notify')}</span>
+          <select data-wl-digest="${productId}">
+            <option value="instant" ${digest === 'instant' ? 'selected' : ''}>${wlLabel('即时', 'Instant')}</option>
+            <option value="daily" ${digest === 'daily' ? 'selected' : ''}>${wlLabel('每日汇总', 'Daily digest')}</option>
+            <option value="weekly" ${digest === 'weekly' ? 'selected' : ''}>${wlLabel('每周汇总', 'Weekly digest')}</option>
+          </select>
+        </label>
+        <label class="wl-sub-row">
+          <span>${wlLabel('缺货到货提醒', 'Restock alert')}</span>
+          <input type="checkbox" data-wl-restock="${productId}" ${entry?.notifyOnRestock !== false ? 'checked' : ''} />
+        </label>
+        <div class="wl-sub-actions">
+          <button type="button" class="btn-primary" data-wl-save="${productId}">${wlLabel('保存订阅', 'Save')}</button>
+          ${entry ? `<button type="button" class="link-btn danger" data-wl-unsub="${productId}">${wlLabel('取消订阅', 'Unsubscribe')}</button>` : ''}
+          <span class="qa-form-note" data-wl-msg="${productId}" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+    </div>`
+  }
+
+/** 保存订阅设置 */
+async function saveWishlistSubscription(productId) {
+  const msg = document.querySelector(`[data-wl-msg="${productId}"]`)
+  const targetRaw = document.querySelector(`[data-wl-target="${productId}"]`)?.value
+  const digest = document.querySelector(`[data-wl-digest="${productId}"]`)?.value || 'instant'
+  const restock = !!document.querySelector(`[data-wl-restock="${productId}"]`)?.checked
+  if (msg) msg.textContent = wlLabel('保存中…', 'Saving…')
+  try {
+    const res = await fetch(apiUrl('/api/store/wishlist/items'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        productId: Number(productId),
+        targetPriceUsd: targetRaw === '' ? null : Number(targetRaw),
+        notifyDigest: digest,
+        notifyOnRestock: restock,
+        notifyOnPriceDrop: true,
+        guestToken: guestTokenForWishlist(),
+      }),
+    })
+    WISHLIST_CACHE.at = 0
+    await loadWishlist({ force: true })
+    if (msg) {
+      msg.textContent = res.ok
+        ? wlLabel('已保存订阅', 'Subscription saved')
+        : wlLabel('保存失败，请稍后再试', 'Failed to save — try later')
+    }
+    if (res.ok) {
+      const panel = document.querySelector(`[data-wl-sub="${productId}"] .wl-sub-panel`)
+      if (panel) panel.hidden = false
+      const btn = document.querySelector(`[data-wl-toggle="${productId}"]`)
+      if (btn) btn.textContent = wlLabel('已订阅 · 点击修改', 'Subscribed · edit')
+    }
+  } catch {
+    if (msg) msg.textContent = wlLabel('保存失败，请稍后再试', 'Failed to save — try later')
+  }
+}
+
+/** 取消订阅（移出心愿单） */
+async function removeWishlistItem(productId) {
+  const msg = document.querySelector(`[data-wl-msg="${productId}"]`)
+  const query = guestTokenForWishlist() ? `?token=${encodeURIComponent(guestTokenForWishlist())}` : ''
+  try {
+    await fetch(apiUrl(`/api/store/wishlist/items/${Number(productId)}${query}`), { method: 'DELETE' })
+    WISHLIST_CACHE.at = 0
+    await loadWishlist({ force: true })
+    await toggleFav(productId)
+    if (msg) msg.textContent = wlLabel('已取消', 'Removed')
+  } catch {
+    if (msg) msg.textContent = wlLabel('操作失败', 'Failed')
+  }
+}
+
+/** #8 公开分享的心愿单（只读，无需登录） */
+async function renderSharedWishlist(code) {
+  const box = document.getElementById('wl-shared-page')
+  if (!box) return
+  try {
+    const data = await apiJson(`/wishlist/shared/${encodeURIComponent(code)}`)
+    const items = Array.isArray(data?.wishlist?.items) ? data.wishlist.items : []
+    const products = items
+      .map((it) => state.products.find((p) => Number(p.id) === Number(it.productId)))
+      .filter(Boolean)
+    box.innerHTML = `
+      <h1 class="page-title">${wlLabel('心愿单', 'Wishlist')} · ${esc(data?.wishlist?.name || '')}</h1>
+      ${
+        products.length
+          ? `<div class="grid">${products.map((p) => productCard(p)).join('')}</div>`
+          : `<div class="empty-note">${wlLabel('这份心愿单还没有商品', 'This wishlist has no items yet')}</div>`
+      }`
+  } catch (error) {
+    box.innerHTML = `<div class="empty-note big">${esc(error?.message || wlLabel('分享链接无效或已关闭', 'Invalid or closed share link'))}</div>`
+  }
+}
+
+/** 心愿单同步状态条（收藏页顶部） */
+function renderWishlistSyncBar() {
+  const data = WISHLIST_CACHE.data
+  const synced = !!data?.synced
+  const count = data?.items?.length || 0
+  return `
+    <div class="wl-bar" id="wl-bar" data-share="${esc(data?.shareCode || '')}">
+      <div class="wl-bar-text">
+        <b>${synced ? wlLabel('心愿单已同步', 'Wishlist synced') : wlLabel('心愿单仅保存在本设备', 'Saved on this device only')}</b>
+        <span class="muted">${
+          synced
+            ? wlLabel('登录后可在任意设备查看与订阅', 'Sign in to view and subscribe from any device')
+            : wlLabel('登录后自动跨设备同步', 'Sign in to sync across devices')
+        }</span>
+      </div>
+      <div class="wl-bar-actions">
+        ${count ? `<span class="wl-count">${wlLabel(`${count} 件订阅`, `${count} subscribed`)}</span>` : ''}
+        <button type="button" class="btn-ghost" id="wl-sync-now">${wlLabel('立即同步', 'Sync now')}</button>
+        <button type="button" class="btn-ghost" id="wl-share">${
+          data?.shareCode ? wlLabel('分享心愿单', 'Share') : wlLabel('生成分享链接', 'Create share link')
+        }</button>
+      </div>
+      <div class="wl-share-out" id="wl-share-out" hidden></div>
+    </div>`
 }
 
 /* ============================== 账号中心（U 系列 2026-10-07） ==============================
@@ -7709,7 +7947,7 @@ async function mountInvoicePanel(orderNo) {
   const panel = document.getElementById('invoice-panel')
   if (!panel || panel.dataset.order !== String(orderNo)) return
   try {
-    const response = await fetch(`/api/store/orders/${encodeURIComponent(orderNo)}/fulfillment`)
+    const response = await fetch(apiUrl(`/api/store/orders/${encodeURIComponent(orderNo)}/fulfillment`))
     if (!response.ok) return
     const data = await response.json().catch(() => null)
     const invoices = data?.fulfillment?.invoices
@@ -7960,7 +8198,7 @@ async function rmaSubmit() {
   if (msg) msg.textContent = rmaLabel('提交中…', 'Submitting…')
   try {
     const token = guestTokenFor(orderNo)
-    const response = await fetch('/api/store/rma/apply', {
+    const response = await fetch(apiUrl('/api/store/rma/apply'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ orderNo, email, token, type, items: picked, reason, images: [] }),
@@ -8554,7 +8792,7 @@ async function loadSession() {
     history.replaceState(null, '', window.location.pathname)
   }
   try {
-    const data = await fetch('/api/store/auth/me').then((response) => response.json())
+    const data = await fetch(apiUrl('/api/store/auth/me')).then((response) => response.json())
     state.customer = data.customer || null
     // 会员积分/等级等扩展字段已并入 customer
   } catch {
@@ -8800,7 +9038,7 @@ async function submitTwoFa(form) {
 /** 第三方登录：跳服务端 start（未配置凭据时给出明确提示） */
 async function startOauth(provider) {
   try {
-    const res = await fetch(`/api/store/auth/oauth/${provider}/start`, { redirect: 'manual' })
+    const res = await fetch(apiUrl(`/api/store/auth/oauth/${provider}/start`), { redirect: 'manual' })
     if (res.type === 'opaqueredirect' || res.redirected || (res.status >= 300 && res.status < 400)) {
       window.location.href = `/api/store/auth/oauth/${provider}/start`
       return
@@ -9017,6 +9255,9 @@ function currentRoute() {
   if (path.startsWith('/cart')) return { name: 'cart' }
   if (path.startsWith('/checkout')) return { name: 'checkout' }
   if (path.startsWith('/favorites')) return { name: 'favorites' }
+  // #8 心愿单公开分享页（/wishlist/<code>）——必须排在下面 group 匹配之前
+  const wishlistShared = path.match(/^\/wishlist\/([A-Za-z0-9_-]{6,16})$/)
+  if (wishlistShared) return { name: 'wishlist-shared', code: wishlistShared[1] }
   // #5 商品对比页（必须排在下面的 group 匹配之前，否则 /compare 会被当成单段分组 slug）
   if (path === '/compare' || path.startsWith('/compare/')) return { name: 'compare' }
   if (path === '/account' || path.startsWith('/account/')) return { name: 'account', tab: path.split('/')[2] || '' }
@@ -9100,7 +9341,7 @@ function ensureDetail(id) {
     product.__full = true
     return Promise.resolve(product)
   }
-  return fetch(`/api/store/product/${pid}`)
+  return fetch(apiUrl(`/api/store/product/${pid}`))
     .then((response) => response.json())
     .then((data) => {
       const full = data && data.product
@@ -9340,12 +9581,30 @@ function render() {
   if (route.name === 'favorites') {
     lastDetailId = 0
     $('app').innerHTML = `<div class="wrap">${renderFavoritesPage()}</div>`
+    // #8 心愿单：异步拉同步态与订阅设置，拿到后重绘同步条
+    void loadWishlist().then(() => {
+      const bar = document.getElementById('wl-bar')
+      if (bar && currentRoute().name === 'favorites') bar.outerHTML = renderWishlistSyncBar()
+      document.querySelectorAll('.fav-row').forEach((row) => {
+        const pid = Number(row.dataset.favId)
+        if (!row.querySelector('.wl-sub')) {
+          row.querySelector('.fav-actions')?.insertAdjacentHTML('afterend', renderWishlistSubscribeRow(pid))
+        }
+      })
+    })
     return
   }
 
   if (route.name === 'compare') {
     lastDetailId = 0
     $('app').innerHTML = renderComparePage()
+    return
+  }
+
+  if (route.name === 'wishlist-shared') {
+    lastDetailId = 0
+    $('app').innerHTML = `<div class="wrap"><div id="wl-shared-page"><div class="skeleton-note">${t('loading')}</div></div></div>`
+    void renderSharedWishlist(route.code)
     return
   }
 
@@ -10378,7 +10637,7 @@ document.addEventListener('click', (event) => {
     const pid = Number(section?.dataset.pid)
     if (section && pid) {
       const shown = section.querySelectorAll('.review-item').length
-      fetch(`/api/store/reviews/${pid}?offset=${shown}&limit=5`)
+      fetch(apiUrl(`/api/store/reviews/${pid}?offset=${shown}&limit=5`))
         .then((response) => response.json())
         .then((data) => {
           const cached = REVIEWS_CACHE.get(pid) || { items: [], summary: { count: 0, avg: 0 } }
@@ -10414,7 +10673,7 @@ document.addEventListener('click', (event) => {
       showMsg(t('reviewBadEmail'), true)
       return
     }
-    fetch('/api/store/stock-alerts', {
+    fetch(apiUrl('/api/store/stock-alerts'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ productId: pid, email }),
@@ -11329,7 +11588,7 @@ async function submitNewsletter(form) {
   const btn = form.querySelector('button[type="submit"]')
   if (btn) btn.disabled = true
   try {
-    const res = await fetch('/api/store/newsletter', {
+    const res = await fetch(apiUrl('/api/store/newsletter'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email }),
@@ -11480,7 +11739,7 @@ function flushTelemetry() {
       if (navigator.sendBeacon && navigator.sendBeacon('/api/store/telemetry', new Blob([body], { type: 'application/json' }))) continue
     } catch { /* 落到 fetch */ }
     try {
-      fetch('/api/store/telemetry', { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(() => {})
+      fetch(apiUrl('/api/store/telemetry'), { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(() => {})
     } catch { /* 静默 */ }
   }
 }
@@ -11702,7 +11961,7 @@ let PROMO_COUPONS = []
 async function loadPromoCoupons() {
   if (PROMO_COUPONS.length) return PROMO_COUPONS
   try {
-    const response = await fetch('/api/store/marketing/coupons')
+    const response = await fetch(apiUrl('/api/store/marketing/coupons'))
     if (!response.ok) return []
     const data = await response.json()
     PROMO_COUPONS = Array.isArray(data.coupons) ? data.coupons : []
@@ -14438,6 +14697,68 @@ document.addEventListener('click', (event) => {
     const form = $('qa-form')
     if (!form) return
     void submitQa(Number(form.dataset.pid))
+    return
+  }
+
+  // #8 心愿单：订阅面板展开/收起、保存、取消订阅、立即同步、生成分享链接
+  if (target.closest('[data-wl-toggle]')) {
+    const pid = target.closest('[data-wl-toggle]').dataset.wlToggle
+    const panel = document.querySelector(`[data-wl-sub="${pid}"] .wl-sub-panel`)
+    if (panel) panel.hidden = !panel.hidden
+    return
+  }
+  if (target.closest('[data-wl-save]')) {
+    event.preventDefault()
+    void saveWishlistSubscription(target.closest('[data-wl-save]').dataset.wlSave)
+    return
+  }
+  if (target.closest('[data-wl-unsub]')) {
+    event.preventDefault()
+    void removeWishlistItem(target.closest('[data-wl-unsub]').dataset.wlUnsub)
+    return
+  }
+  if (target.closest('#wl-sync-now')) {
+    event.preventDefault()
+    void syncWishlistFromLocal().then(({ moved }) => {
+      toast(moved ? wlLabel(`已同步 ${moved} 件到心愿单`, `Synced ${moved} items`) : wlLabel('心愿单已是最新', 'Wishlist is up to date'))
+      return loadWishlist({ force: true }).then(() => render())
+    })
+    return
+  }
+  if (target.closest('#wl-share')) {
+    event.preventDefault()
+    void (async () => {
+      const res = await fetch(apiUrl('/api/store/wishlist/share'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ enable: true, guestToken: guestTokenForWishlist() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      const out = document.getElementById('wl-share-out')
+      if (!data.shareCode || !out) {
+        toast(wlLabel('分享链接生成失败', 'Could not create share link'))
+        return
+      }
+      const url = `${location.origin}/wishlist/${data.shareCode}`
+      out.hidden = false
+      out.innerHTML = `
+        <span>${wlLabel('公开链接', 'Public link')}</span>
+        <input type="text" readonly value="${esc(url)}" data-wl-share-input />
+        <button type="button" class="btn-ghost" data-wl-share-copy>${wlLabel('复制', 'Copy')}</button>
+        <a class="link-btn" href="${esc(url)}" target="_blank" rel="noopener">${wlLabel('打开', 'Open')}</a>`
+      WISHLIST_CACHE.at = 0
+      await loadWishlist({ force: true })
+    })()
+    return
+  }
+  if (target.closest('[data-wl-share-copy]')) {
+    event.preventDefault()
+    const input = document.querySelector('[data-wl-share-input]')
+    if (input) {
+      input.select()
+      navigator.clipboard?.writeText(input.value).catch(() => {})
+      toast(wlLabel('链接已复制', 'Link copied'))
+    }
     return
   }
 

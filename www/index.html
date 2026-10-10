@@ -36,7 +36,7 @@
     <link rel="icon" href="/favicon.ico?v=20261010i" sizes="48x48" />
     <link rel="icon" type="image/png" sizes="180x180" href="/img/favicon-mxq.png?v=20261010i" />
     <link rel="apple-touch-icon" href="/img/favicon-mxq-apple.png?v=20261010i" />
-    <link rel="stylesheet" href="/styles.css?v=20261010d" />
+    <link rel="stylesheet" href="/styles.css?v=20261010e" />
     <!-- M4 性能：catalog 是首屏渲染的唯一阻塞数据源，提前 preload 抢在脚本解析前发起，
          避免「HTML → CSS → JS → fetch(catalog)」串行等待（实测首屏 LCP 的主要瓶颈）。 -->
     <link rel="preload" href="/api/store/catalog" as="fetch" crossorigin="anonymous" />
@@ -491,6 +491,6 @@
 
     <script src="/data/geo.js?v=20260925a"></script>
     <script src="/vendor/qrcode.min.js"></script>
-    <script type="module" src="/app.js?v=20261010h"></script>
+    <script type="module" src="/app.js?v=20261010i"></script>
   </body>
 </html>
