@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MXQ Store</string>
+    <string name="title_activity_main">MXQ Store</string>
+    <string name="package_name">to.mxqshop.app</string>
+    <string name="custom_url_scheme">to.mxqshop.app</string>
+</resources>

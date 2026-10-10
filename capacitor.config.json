@@ -1,0 +1,27 @@
+{
+  "appId": "to.mxqshop.app",
+  "appName": "MXQ Store",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "loggingBehavior": "production",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "allowNavigation": [
+      "mxqshop.to",
+      "www.mxqshop.to",
+      "admin.mxqshop.to"
+    ]
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#0b1220"
+  },
+  "ios": {
+    "contentInset": "always",
+    "limitsNavigationsToAppBoundDomains": true,
+    "backgroundColor": "#0b1220"
+  }
+}

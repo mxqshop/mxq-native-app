@@ -1,0 +1,21 @@
+{
+  "name": "mxq-native-app",
+  "version": "1.0.0",
+  "description": "MXQ Store 原生 App（Capacitor 壳，打包 mxqshop.to PWA）",
+  "private": true,
+  "scripts": {
+    "sync": "bash scripts/sync-web.sh",
+    "sync:ci": "bash scripts/sync-web-ci.sh",
+    "cap:sync": "cap sync",
+    "ios:open": "cap open ios",
+    "android:open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3"
+  }
+}

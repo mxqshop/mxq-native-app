@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>MXQ · Football Store Official Jerseys & Gear</title>
+    <meta name="description" content="MXQ standalone storefront: football jerseys, boots, bags, eyewear. Sizes, PATCH badges and name/number customization, priced into the total in real time." />
+    <meta name="theme-color" content="#0b1220" />
+    <!-- M1 多市场 SEO：canonical + hreflang。SPA 语言切换靠 JS，爬虫按 URL 收录，
+         故 hreflang 只在「真实不同的市场 URL」之间声明（同 URL 互指属于无效声明，会被忽略）。
+         app.js 启动与路由切换时会按当前路径重算这组标签（updateSeoLinks）。 -->
+    <link rel="canonical" href="https://mxqshop.to/" />
+    <link rel="alternate" hreflang="en-US" href="https://mxqshop.to/" />
+    <link rel="alternate" hreflang="en-GB" href="https://mxqshop.to/uk/" />
+    <link rel="alternate" hreflang="de-DE" href="https://mxqshop.to/de/" />
+    <link rel="alternate" hreflang="fr-FR" href="https://mxqshop.to/fr/" />
+    <link rel="alternate" hreflang="ja-JP" href="https://mxqshop.to/jp/" />
+    <link rel="alternate" hreflang="en-AU" href="https://mxqshop.to/au/" />
+    <link rel="alternate" hreflang="x-default" href="https://mxqshop.to/" />
+    <meta property="og:locale" content="en_US" />
+    <!-- SEO 增强 #33：社交分享卡片静态兜底（爬虫/分享爬虫不执行 JS，靠 app.js 的 seoSocial 逐路由覆盖） -->
+    <meta property="og:site_name" content="MXQ Football Store" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="MXQ · Football Store Official Jerseys &amp; Gear" />
+    <meta property="og:description" content="Football jerseys, boots, bags, eyewear. Sizes, PATCH badges and name/number customization, priced into the total in real time." />
+    <meta property="og:url" content="https://mxqshop.to/" />
+    <meta property="og:image" content="https://mxqshop.to/img/logo-mxq.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MXQ · Football Store Official Jerseys &amp; Gear" />
+    <meta name="twitter:description" content="Football jerseys, boots, bags, eyewear. Sizes, PATCH badges and name/number customization, priced into the total in real time." />
+    <meta name="twitter:image" content="https://mxqshop.to/img/logo-mxq.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MXQ Store" />
+    <link rel="manifest" href="/manifest.webmanifest?v=20261008a" />
+    <link rel="icon" href="/favicon.ico?v=20261010i" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="180x180" href="/img/favicon-mxq.png?v=20261010i" />
+    <link rel="apple-touch-icon" href="/img/favicon-mxq-apple.png?v=20261010i" />
+    <link rel="stylesheet" href="/styles.css?v=20261010d" />
+    <!-- M4 性能：catalog 是首屏渲染的唯一阻塞数据源，提前 preload 抢在脚本解析前发起，
+         避免「HTML → CSS → JS → fetch(catalog)」串行等待（实测首屏 LCP 的主要瓶颈）。 -->
+    <link rel="preload" href="/api/store/catalog" as="fetch" crossorigin="anonymous" />
+    <!-- 移动端首屏常见 LCP 元素是页头 Logo/旗帜图，提前取回 -->
+    <link rel="preload" as="image" href="/img/flags-country/us.png" />
+  </head>
+  <body>
+    <!-- M7 a11y：键盘用户跳过导航直达主内容 -->
+    <a class="skip-link" href="#app" data-i18n="skipToContent">Skip to content</a>
+    <!-- 顶部订单查询细栏：仅 Track Order 一个按钮，高度贴合按钮（不吸顶，随页面滚动） -->
+    <div class="topbar">
+      <div class="wrap topbar-inner">
+        <button class="hbtn" id="track-btn" type="button" data-i18n-aria="trackOrder" aria-label="Track Order">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 16V8l-9-5-9 5v8l9 5 9-5z" />
+            <path d="M3.3 7.5 12 12.5l8.7-5" />
+            <path d="M12 12.5V21" />
+          </svg>
+          <span class="hbtn-text" data-i18n="trackOrder">Track Order</span>
+        </button>
+      </div>
+    </div>
+    <header class="site-header" id="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="/" aria-label="MXQ Football Store Home">
+          <img src="/img/logo-mxq-header.png?v=20261007e" alt="MXQ Football Store" width="471" height="232" />
+        </a>
+        <!-- AliExpress 同款搜索框：白底黑边胶囊，右侧以图搜款扫描图标 + 黑色圆形搜索按钮 -->
+        <div class="search" id="search-box">
+          <input id="search" type="search" data-i18n-placeholder="searchPlaceholder" placeholder="Search jerseys / teams / products" autocomplete="off" />
+          <button class="search-cam" id="search-cam" type="button" data-i18n-aria="searchByImage" aria-label="Search by image">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M8 3.6H5.8a2.2 2.2 0 0 0-2.2 2.2V8" />
+              <path d="M16 3.6h2.2a2.2 2.2 0 0 1 2.2 2.2V8" />
+              <path d="M8 20.4H5.8a2.2 2.2 0 0 1-2.2-2.2V16" />
+              <path d="M16 20.4h2.2a2.2 2.2 0 0 0 2.2-2.2V16" />
+              <circle cx="12" cy="12" r="3.1" fill="currentColor" stroke="none" />
+            </svg>
+          </button>
+          <button class="search-go" id="search-go" type="button" data-i18n-aria="searchShort" aria-label="Search">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2.3"
+                 stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.4" />
+              <path d="m20.2 20.2-4.5-4.5" />
+            </svg>
+          </button>
+        </div>
+        <div class="header-actions">
+          <button class="hbtn" id="fav-btn" type="button" data-i18n-aria="favTitle" aria-label="My favourites">
+            <span class="fav-icon-wrap">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 20.4s-7.4-4.6-7.4-9.7A4.4 4.4 0 0 1 12 7.4a4.4 4.4 0 0 1 7.4 3.3c0 5.1-7.4 9.7-7.4 9.7z" />
+              </svg>
+              <span class="fav-count" id="fav-count" hidden>0</span>
+            </span>
+            <span class="hbtn-text" data-i18n="favBtnLabel">Favorite</span>
+          </button>
+          <button class="cart-btn" id="cart-btn" type="button" data-i18n-aria="cart" aria-label="Cart">
+            <span class="cart-icon-wrap">
+              <svg class="cart-glyph" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="9.4" cy="20.2" r="1.5" />
+                <circle cx="18.2" cy="20.2" r="1.5" />
+                <path d="M2.8 3.2h2.1l2.5 12.1a1.9 1.9 0 0 0 1.9 1.5h8.5a1.9 1.9 0 0 0 1.9-1.5l1.6-8.4H6.2" />
+              </svg>
+              <span class="cart-count" id="cart-count">0</span>
+            </span>
+            <span class="cart-label" data-i18n="cart">Cart</span>
+          </button>
+          <button class="locale-btn" id="locale-btn" type="button" aria-label="Ship to / Language / Currency">
+            <img class="locale-btn-flag" id="locale-btn-flag" src="/img/flags-country/us.png" alt="" width="21" height="15" />
+            <span class="locale-btn-stack">
+              <span class="locale-btn-lang" id="locale-btn-lang">EN/</span>
+              <span class="locale-btn-cur">USD<svg class="locale-btn-chev" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></span>
+            </span>
+          </button>
+          <button class="hbtn" id="account-btn" type="button" aria-label="Customer sign in or register">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.4" />
+              <path d="M4.8 20c1.3-3.7 4-5.5 7.2-5.5s5.9 1.8 7.2 5.5" />
+            </svg>
+            <span class="hbtn-text" id="account-label">Sign in / Register</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="catbar-wrap" id="nav-wrap" aria-label="Product categories">
+      <div class="wrap catbar-inner">
+        <nav class="nav" id="nav"></nav>
+      </div>
+    </nav>
+
+    <!-- Fanatics 式 Shop Your Teams 组件：左侧最近浏览球队 + 右侧联赛图标跑马灯 -->
+    <div class="team-widget" id="team-widget" hidden>
+      <div class="wrap team-widget-inner">
+        <div class="tw-head">
+          <span class="tw-title" id="tw-title">Shop Your Teams</span>
+          <button class="tw-seeall" id="tw-seeall" type="button" data-category="" data-group="0">See All</button>
+        </div>
+        <div class="tw-teams" id="tw-teams"></div>
+        <div class="tw-divider" aria-hidden="true"></div>
+        <div class="tw-marquee" id="tw-marquee" aria-label="Shop by league">
+          <div class="tw-track" id="tw-track"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 一级分类悬停大菜单（Fanatics 式）：挂在 body 级，避免被导航条滚动容器裁剪 -->
+    <div class="mega" id="mega-root" aria-label="Category menu"></div>
+
+    <main id="app" tabindex="-1">
+      <div class="wrap">
+        <!-- M5 骨架屏：首屏数据到达前的占位卡片（与商品卡同构，避免布局跳变） -->
+        <div class="skeleton-note" data-i18n="loading">Loading product data from the API domain…</div>
+        <div class="grid skeleton-grid" aria-hidden="true">
+          <div class="card sk-card"><div class="card-media sk-block"></div><div class="card-body"><div class="sk-line w70"></div><div class="sk-line w90"></div></div></div>
+          <div class="card sk-card"><div class="card-media sk-block"></div><div class="card-body"><div class="sk-line w50"></div><div class="sk-line w80"></div></div></div>
+          <div class="card sk-card"><div class="card-media sk-block"></div><div class="card-body"><div class="sk-line w80"></div><div class="sk-line w60"></div></div></div>
+          <div class="card sk-card"><div class="card-media sk-block"></div><div class="card-body"><div class="sk-line w60"></div><div class="sk-line w90"></div></div></div>
+          <div class="card sk-card"><div class="card-media sk-block"></div><div class="card-body"><div class="sk-line w70"></div><div class="sk-line w50"></div></div></div>
+          <div class="card sk-card"><div class="card-media sk-block"></div><div class="card-body"><div class="sk-line w90"></div><div class="sk-line w70"></div></div></div>
+          <div class="card sk-card"><div class="card-media sk-block"></div><div class="card-body"><div class="sk-line w50"></div><div class="sk-line w80"></div></div></div>
+          <div class="card sk-card"><div class="card-media sk-block"></div><div class="card-body"><div class="sk-line w70"></div><div class="sk-line w60"></div></div></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-grid">
+        <div class="footer-col footer-brand">
+          <a class="footer-logo" href="/" aria-label="MXQ Football Store Home">
+            <img src="/img/logo-mxq-footer.png?v=20261007g" alt="MXQ Football Store" width="710" height="348" />
+          </a>
+          <div class="footer-social-head" data-i18n="footerSocial">Follow Us</div>
+          <div class="footer-socials" id="footer-socials"></div>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="footerCs">Customer Service</h4>
+          <a class="footer-link" href="/support">Live Chat &amp; Support</a>
+          <a class="footer-link" href="/help">Help Center &amp; FAQ</a>
+          <a class="footer-link" href="/contact" data-i18n="fContact">Contact Us</a>
+          <button type="button" class="footer-link" data-track-order data-i18n="fTrack">Track My Order</button>
+          <a class="footer-link" href="/shipping" data-i18n="fShipping">Shipping</a>
+          <a class="footer-link" href="/get-app" data-i18n="fGetApp">Get the App</a>
+          <button type="button" class="footer-link" data-size-guide data-i18n="fSizeChart">Size Chart</button>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="fWorry">Worry Free Shopping</h4>
+          <a class="footer-link" href="/policies/returns">Return &amp; Refund Policy</a>
+          <a class="footer-link" href="/authenticity" data-i18n="fAuthentic">Authenticity Guarantee</a>
+          <a class="footer-link" href="/safe-shopping" data-i18n="fSafe">Safe Shopping</a>
+          <a class="footer-link" href="/promo-terms" data-i18n="fPromo">Promo Terms</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="fInfo">Information</h4>
+          <a class="footer-link" href="/about" data-i18n="fAbout">About Us</a>
+          <a class="footer-link" href="/policies/privacy">Privacy Policy</a>
+          <a class="footer-link" href="/policies/terms">Terms of Use</a>
+          <a class="footer-link" href="/policies/cookies">Cookie Policy</a>
+          <a class="footer-link" href="/privacy-portal">Privacy Portal</a>
+          <button type="button" class="footer-link" data-cx-cookie-settings>Cookie Settings</button>
+          <a class="footer-link" href="/accessibility" data-i18n="fAccessibility">Accessibility</a>
+          <a class="footer-link" href="/blog">Blog</a>
+        </div>
+        <div class="footer-col footer-news">
+          <h4 data-i18n="fGetApp">Get the App</h4>
+          <div class="footer-app-row">
+            <a class="footer-app-qr" aria-label="MXQ App QR code">
+              <img src="/img/app-qr.png?v=20261009i" alt="MXQ App QR code" width="96" height="96" loading="lazy" />
+            </a>
+            <div class="footer-app-badges">
+              <a href="/get-app" id="footer-badge-gp" aria-label="Get it on Google Play">
+                <img src="/img/badge-google-play.png?v=20261011a" alt="Get it on Google Play" width="108" height="36" loading="lazy" />
+              </a>
+              <a href="/get-app" id="footer-badge-as" aria-label="Download on the App Store">
+                <img src="/img/badge-app-store.svg" alt="Download on the App Store" width="108" height="36" loading="lazy" />
+              </a>
+            </div>
+          </div>
+          <h4 data-i18n="fSignup">SIGN UP &amp; SAVE!</h4>
+          <p data-i18n="fSignupNote">Stay updated on sales, new items and more.</p>
+          <form id="newsletter-form" novalidate>
+            <input type="email" name="email" required data-i18n-placeholder="fEmailPh" placeholder="Enter your email" autocomplete="email" />
+            <button type="submit" data-i18n="fSubscribe">Subscribe</button>
+          </form>
+          <div id="newsletter-msg" class="newsletter-msg" hidden></div>
+        </div>
+      </div>
+      <div class="wrap footer-bottom">
+        <div class="pay-icons pay-icons-footer" aria-label="Payment methods">
+          <img src="/img/pay/visa.svg" alt="Visa" loading="lazy" /><img src="/img/pay/master.svg" alt="Mastercard" loading="lazy" /><img src="/img/pay/american_express.svg" alt="American Express" loading="lazy" /><img src="/img/pay/discover.svg" alt="Discover" loading="lazy" /><img src="/img/pay/paypal.svg" alt="PayPal" loading="lazy" /><img src="/img/pay/apple_pay.svg" alt="Apple Pay" loading="lazy" />
+        </div>
+        <p class="copyright">© MXQ Football Store, 2026. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <aside class="drawer" id="cart-drawer" hidden>
+      <div class="drawer-head">
+        <strong data-i18n="cart">Cart</strong>
+        <button type="button" class="icon-btn" id="cart-close">✕</button>
+      </div>
+      <div class="drawer-body" id="cart-body"></div>
+      <!-- P0-4 优惠促销：购物车内展示可用优惠码 -->
+      <div class="drawer-promo" data-promo-slot="cart"></div>
+      <div class="drawer-foot" id="cart-foot"></div>
+    </aside>
+    <div class="scrim" id="scrim" hidden></div>
+    <div class="scrim" id="modal-scrim" hidden></div>
+
+    <!-- Ship to / Language / Currency 面板（AliExpress 风格） -->
+    <div class="locale-pop" id="locale-pop" hidden>
+      <div class="locale-pop-arrow" aria-hidden="true"></div>
+      <div class="locale-pop-inner">
+        <!-- M1 多市场站点结构：市场（子目录 /us/、/uk/…）独立于收货国家，用于 canonical 与区域化定价 -->
+        <div class="locale-sec-title" id="lp-title-market">Market</div>
+        <div class="locale-list locale-list-market" id="lp-list-market" role="radiogroup" aria-labelledby="lp-title-market"></div>
+        <div class="locale-sec-title" id="lp-title-ship">Ship to</div>
+        <button type="button" class="locale-select" id="lp-sel-country" data-lsel="country"></button>
+        <div class="locale-list" id="lp-list-country" hidden></div>
+        <button type="button" class="locale-select" id="lp-sel-state" data-lsel="state" hidden></button>
+        <div class="locale-list" id="lp-list-state" hidden></div>
+        <button type="button" class="locale-select" id="lp-sel-city" data-lsel="city" hidden></button>
+        <div class="locale-list" id="lp-list-city" hidden></div>
+        <div class="locale-sec-title" id="lp-title-lang">Language</div>
+        <button type="button" class="locale-select" id="lp-sel-lang" data-lsel="lang"></button>
+        <div class="locale-list" id="lp-list-lang" hidden></div>
+        <div class="locale-sec-title" id="lp-title-cur">Currency</div>
+        <button type="button" class="locale-select" id="lp-sel-cur" data-lsel="cur"></button>
+        <div class="locale-list" id="lp-list-cur" hidden></div>
+        <button type="button" class="locale-save" id="locale-save">Save</button>
+      </div>
+    </div>
+
+    <!-- 尺寸表弹窗（全站商品通用，内容由 app.js 渲染） -->
+    <div class="modal" id="size-guide-modal" hidden role="dialog" aria-modal="true" aria-labelledby="size-guide-title">
+      <div class="modal-card size-guide-card">
+        <div class="modal-head">
+          <strong id="size-guide-title">Size Guide</strong>
+          <button type="button" class="icon-btn" data-close-modal aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body size-guide-body" id="size-guide-body"></div>
+      </div>
+    </div>
+
+    <!-- 客户登录 / 注册窗口 -->
+    <div class="modal" id="auth-modal" hidden role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">      <div class="modal-card">
+        <div class="modal-head">
+          <strong id="auth-modal-title" data-i18n="authTitle">Customer sign in / register</strong>
+          <button type="button" class="icon-btn" data-close-modal aria-label="Close">✕</button>
+        </div>
+        <div class="modal-tabs" id="auth-tabs">
+          <button type="button" data-auth-tab="login" class="active" data-i18n="loginTab">Sign in</button>
+          <button type="button" data-auth-tab="register" data-i18n="registerTab">Register</button>
+        </div>
+        <div class="modal-body">
+          <form id="login-form" class="modal-form" novalidate>
+            <div class="form-row">
+              <label for="lg-account" data-i18n="accountLabel">Account (email or phone)<i>*</i></label>
+              <input id="lg-account" name="account" type="text" autocomplete="username"
+                     data-i18n-placeholder="accountPlaceholder" placeholder="you@example.com or +8613800138000" required />
+            </div>
+            <div class="form-row">
+              <label for="lg-password" data-i18n="passwordLabel">Password<i>*</i></label>
+              <input id="lg-password" name="password" type="password" autocomplete="current-password"
+                     data-i18n-placeholder="passwordPlaceholder" placeholder="Enter the password you set when registering" required />
+            </div>
+            <div class="form-msg" id="login-msg" hidden></div>
+            <button class="btn-primary form-submit" type="submit" data-i18n="signIn">Sign in</button>
+            <p class="form-switch"><span data-i18n="noAccount">No account yet?</span> <button type="button" data-auth-tab="register" data-i18n="registerNow">Register now</button></p>
+
+            <div class="oauth-divider"><span data-i18n="oauthDivider">or continue with</span></div>
+            <div class="oauth-row">
+              <button type="button" class="oauth-btn oauth-google" data-oauth="google"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.1h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.2-2.1 3.7-5.1 3.7-8.6z"/><path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.2 0-5.9-2.1-6.8-5.1L1.3 17.2C3.3 21.2 7.3 24 12 24z"/><path fill="#FBBC05" d="M5.2 14.3c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.3 6.8C.5 8.4 0 10.1 0 12s.5 3.6 1.3 5.2l3.9-2.9z"/><path fill="#EA4335" d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.3-3.2C17.9 1.1 15.2 0 12 0 7.3 0 3.3 2.8 1.3 6.8l3.9 2.9c.9-2.9 3.6-5 6.8-5z"/></svg><span data-i18n="oauthGoogle">Google</span></button>
+              <button type="button" class="oauth-btn oauth-facebook" data-oauth="facebook"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#1877F2" d="M24 12a12 12 0 1 0-13.9 11.9v-8.4h-3V12h3V9.4c0-3 1.8-4.7 4.6-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.3l-.5 3.5h-2.8v8.4A12 12 0 0 0 24 12z"/></svg><span data-i18n="oauthFacebook">Facebook</span></button>
+              <button type="button" class="oauth-btn oauth-apple" data-oauth="apple"><svg width="15" height="17" viewBox="0 0 384 512" aria-hidden="true"><path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg><span data-i18n="oauthApple">Apple</span></button>
+            </div>
+            <p class="form-msg" id="oauth-msg" hidden></p>
+          </form>
+
+          <form id="twofa-form" class="modal-form" hidden novalidate>
+            <div class="form-row">
+              <label data-i18n="twoFactorHint">Enter the 6-digit code from your authenticator app</label>
+              <input id="tf-code" name="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="123456" required />
+            </div>
+            <div class="form-msg" id="twofa-msg" hidden></div>
+            <button class="btn-primary form-submit" type="submit" data-i18n="twoFactorVerify">Verify</button>
+            <p class="form-switch"><button type="button" data-auth-tab="login" data-i18n="loginNow">Back to sign in</button></p>
+          </form>
+
+          <form id="register-form" class="modal-form" hidden novalidate>
+            <div class="form-group">
+              <div class="form-legend" data-i18n="accountInfo">Account info</div>
+              <div class="form-row">
+                <label for="rg-account" data-i18n="accountLabel">Account (email or phone)<i>*</i></label>
+                <input id="rg-account" name="account" type="text" autocomplete="username"
+                       data-i18n-placeholder="accountPlaceholder" placeholder="you@example.com or +8613800138000" required />
+              </div>
+              <div class="form-grid">
+                <div class="form-row">
+                  <label for="rg-password" data-i18n="passwordLabel">Password<i>*</i></label>
+                  <input id="rg-password" name="password" type="password" autocomplete="new-password"
+                         data-i18n-placeholder="passwordMinHint" placeholder="At least 6 characters" required />
+                </div>
+                <div class="form-row">
+                  <label for="rg-confirm" data-i18n="fieldConfirm">Confirm password<i>*</i></label>
+                  <input id="rg-confirm" name="confirm" type="password" autocomplete="new-password"
+                         data-i18n-placeholder="confirmPlaceholder" placeholder="Enter again" required />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div class="form-legend"><span data-i18n="shippingLegend">Shipping address</span><span data-i18n="shippingLegendHint">Used for order delivery — every field below is required</span></div>
+              <div class="form-grid form-grid-3">
+                <div class="form-row">
+                  <label for="rg-country" data-i18n="fieldCountry">Country<i>*</i></label>
+                  <select id="rg-country" name="country" autocomplete="country" required></select>
+                </div>
+                <div class="form-row">
+                  <label for="rg-state" data-i18n="fieldState">State / Province<i>*</i></label>
+                  <input id="rg-state" name="state" type="text" list="rg-state-list" autocomplete="address-level1" required />
+                  <datalist id="rg-state-list"></datalist>
+                </div>
+                <div class="form-row">
+                  <label for="rg-city" data-i18n="fieldCity">City<i>*</i></label>
+                  <input id="rg-city" name="city" type="text" autocomplete="address-level2" required />
+                </div>
+              </div>
+              <div class="form-row">
+                <label for="rg-address" data-i18n="fieldAddress">Address<i>*</i></label>
+                <input id="rg-address" name="address" type="text" autocomplete="street-address"
+                       data-i18n-placeholder="addressPlaceholder" placeholder="Street / area / building" required />
+              </div>
+              <div class="form-grid form-grid-3">
+                <div class="form-row">
+                  <label for="rg-house" data-i18n="fieldHouse">House No.<i>*</i></label>
+                  <input id="rg-house" name="houseNumber" type="text" autocomplete="address-line2" required />
+                </div>
+                <div class="form-row">
+                  <label for="rg-zip" data-i18n="fieldZip">ZIP / Postal code<i>*</i></label>
+                  <input id="rg-zip" name="zipCode" type="text" autocomplete="postal-code" required />
+                </div>
+                <div class="form-row">
+                  <label for="rg-phone" data-i18n="fieldPhone">Phone<i>*</i></label>
+                  <input id="rg-phone" name="phone" type="tel" autocomplete="tel"
+                         placeholder="+8613800138000" required />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-msg" id="register-msg" hidden></div>
+            <button class="btn-primary form-submit" type="submit" data-i18n="registerAndLogin">Register & Sign in</button>
+            <p class="form-switch"><span data-i18n="hasAccount">Already have an account?</span> <button type="button" data-auth-tab="login" data-i18n="loginNow">Sign in directly</button></p>
+          </form>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 订单 / 物流查询窗口 -->
+    <div class="modal" id="track-modal" hidden role="dialog" aria-modal="true" aria-labelledby="track-modal-title">
+      <div class="modal-card">
+        <div class="modal-head">
+          <strong id="track-modal-title" data-i18n="trackModalTitle">Order / logistics tracking</strong>
+          <button type="button" class="icon-btn" data-close-modal aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-lead" data-i18n="trackLead">Enter an order number or tracking number to view details; live tracking continues on 17TRACK.</p>
+          <form id="track-form" class="modal-form" novalidate>
+            <div class="form-row">
+              <label for="tk-no" data-i18n="trackNoLabel">Order number or tracking number<i>*</i></label>
+              <input id="tk-no" name="no" type="text" data-i18n-placeholder="trackNoPlaceholder" placeholder="e.g. GS2604221089 or LP600012193CN" required />
+            </div>
+            <div class="form-msg" id="track-msg" hidden></div>
+            <button class="btn-primary form-submit" type="submit" data-i18n="query">Search</button>
+          </form>
+          <div id="track-result"></div>
+          <p class="track-foot">
+            <span data-i18n="providedBy">Live tracking provided by</span>
+            <a href="https://www.17track.net/zh-cn" target="_blank" rel="noopener noreferrer">17TRACK</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 我的账户 -->
+    <div class="modal" id="account-modal" hidden role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
+      <div class="modal-card">
+        <div class="modal-head">
+          <strong id="account-modal-title" data-i18n="accountModalTitle">My account</strong>
+          <button type="button" class="icon-btn" data-close-modal aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body" id="account-body"></div>
+      </div>
+    </div>
+
+    <!-- 以图搜款（AliExpress 同款）：面板锚定在搜索框下方，支持拖放 / 上传 / CTRL+V 粘贴 -->
+    <div class="modal imgsearch-modal" id="imgsearch-modal" hidden role="dialog" aria-modal="true" aria-labelledby="imgsearch-title">
+      <div class="imgsearch-panel" id="imgsearch-panel">
+        <div class="imgsearch-head">
+          <h3 id="imgsearch-title" data-i18n="imgSearchTitle">Search by image</h3>
+          <button type="button" class="imgsearch-close" data-close-modal aria-label="Close">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
+        </div>
+        <p class="imgsearch-sub" data-i18n="imgSearchSub">Find what you love with better prices on MXQ by using an image search</p>
+        <div class="imgsearch-drop" id="imgsearch-drop">
+          <div class="imgsearch-empty" id="imgsearch-empty">
+            <svg class="imgsearch-ph" viewBox="0 0 48 48" width="46" height="46" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="6" y="9" width="36" height="30" rx="4.5" />
+              <circle cx="18" cy="19.5" r="3.4" />
+              <path d="m10 36 9.5-9.5a2.6 2.6 0 0 1 3.7 0L32 35.5" />
+              <path d="m27 30.5 4.2-4.2a2.6 2.6 0 0 1 3.7 0L41 32.4" />
+            </svg>
+            <div class="imgsearch-drag" data-i18n="imgSearchDrag">Drag an image here</div>
+            <div class="imgsearch-or" data-i18n="imgSearchOr">or</div>
+            <button type="button" class="imgsearch-upload" id="imgsearch-upload" data-i18n="imgSearchUpload">Upload a photo</button>
+          </div>
+          <div class="imgsearch-busy" id="imgsearch-busy" hidden>
+            <img id="imgsearch-preview" alt="" />
+            <div class="imgsearch-status"><span class="imgsearch-spinner" aria-hidden="true"></span><span data-i18n="imgSearching">Searching…</span></div>
+          </div>
+          <input type="file" id="imgsearch-file" accept="image/*" hidden />
+        </div>
+        <p class="imgsearch-tip" data-i18n="imgSearchTip">*For a quick search hit CTRL+V to paste an image into the search box</p>
+      </div>
+    </div>
+
+    <button class="to-top" id="back-to-top" type="button" data-i18n-aria="backToTop" aria-label="Back to top" hidden>
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 19V5" />
+        <path d="m5.5 11.5 6.5-6.5 6.5 6.5" />
+      </svg>
+    </button>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <!-- #5 商品对比：底部对比浮条（内容由 app.js paintCompareBar 渲染） -->
+    <div class="cmp-bar" id="cmp-bar" hidden></div>
+
+    <!-- M3 PWA 离线兜底：断网时明确告知，而不是让用户对着旧页面猜（role=status 供读屏播报） -->
+    <div class="offline-bar" id="offline-bar" role="status" aria-live="polite" hidden>
+      <span data-i18n="offlineHint">You are offline — showing saved content. Some prices may be out of date.</span>
+      <button type="button" class="offline-retry" data-i18n="retry">Retry</button>
+    </div>
+
+    <script src="/data/geo.js?v=20260925a"></script>
+    <script src="/vendor/qrcode.min.js"></script>
+    <script type="module" src="/app.js?v=20261010h"></script>
+  </body>
+</html>

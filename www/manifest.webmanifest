@@ -1,0 +1,62 @@
+{
+  "id": "/?source=pwa",
+  "name": "MXQ Football Store",
+  "short_name": "MXQ Store",
+  "description": "Official football jerseys & gear — sizes, PATCH badges and name/number customization.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "portrait",
+  "background_color": "#f6f8fc",
+  "theme_color": "#0b1220",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["shopping", "sports"],
+  "icons": [
+    {
+      "src": "/img/mxq-emblem-192.png?v=20261008a",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/mxq-emblem-512.png?v=20261008a",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/mxq-maskable-192.png?v=20261008a",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/img/mxq-maskable-512.png?v=20261008a",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Shop Jerseys",
+      "short_name": "Jerseys",
+      "url": "/soccer-jersey",
+      "icons": [{ "src": "/img/mxq-emblem-192.png?v=20261008a", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Orders",
+      "short_name": "Orders",
+      "url": "/order",
+      "icons": [{ "src": "/img/mxq-emblem-192.png?v=20261008a", "sizes": "192x192" }]
+    },
+    {
+      "name": "Cart",
+      "short_name": "Cart",
+      "url": "/cart",
+      "icons": [{ "src": "/img/mxq-emblem-192.png?v=20261008a", "sizes": "192x192" }]
+    }
+  ]
+}

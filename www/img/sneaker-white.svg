@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900" width="900" height="900" role="img"><defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#e8eef6"/></linearGradient></defs><rect width="900" height="900" fill="url(#bg)"/>
+<defs><filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+  <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.2"/></filter></defs>
+<g filter="url(#soft)">
+  <path d="M180 300 C240 288 330 276 400 300 C470 324 520 372 600 400 C672 426 730 452 748 500 C758 528 742 552 706 556 L212 556 C176 556 160 534 164 500 L176 380 C180 340 168 312 180 300 Z" fill="#f1f5f9"/>
+  <path d="M400 300 C470 324 520 372 600 400 C648 418 692 436 720 464 L520 470 C470 392 420 340 400 300 Z" fill="#22d3ee" opacity="0.85"/>
+  <path d="M206 556 L712 556 C744 556 754 574 748 592 L200 592 C186 592 182 570 206 556 Z" fill="#0f172a"/>
+  <path d="M212 600 L744 600 L740 622 C736 640 720 650 700 650 L252 650 C228 650 214 638 214 622 Z" fill="#0f172a" opacity="0.75"/>
+</g>
+<g fill="#f1f5f9">
+  <path d="M244 640 L262 640 L262 700 C262 716 244 716 244 700 Z"/>
+  <path d="M340 640 L358 640 L358 700 C358 716 340 716 340 700 Z"/>
+  <path d="M470 640 L488 640 L488 700 C488 716 470 716 470 700 Z"/>
+  <path d="M580 640 L598 640 L598 700 C598 716 580 716 580 700 Z"/>
+  <path d="M690 640 L708 640 L708 700 C708 716 690 716 690 700 Z"/>
+</g>
+<path d="M300 340 C360 320 430 330 470 368" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="10" stroke-linecap="round" stroke-dasharray="2 26"/>
+<path d="M280 400 C350 384 420 396 470 436" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="10" stroke-linecap="round" stroke-dasharray="2 26"/>
+<text x="450" y="810" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="26" font-weight="700" fill="#94a3b8" letter-spacing="6">MXQ</text></svg>

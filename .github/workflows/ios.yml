@@ -1,0 +1,142 @@
+name: iOS 构建
+
+on:
+  push:
+    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: 构建 iOS
+    # macOS runner 才能构建 Xcode 工程
+    runs-on: macos-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: 选择 Xcode（自动探测最新）
+        run: |
+          # 优先用16，回退到runner 上实际安装的最高版本
+          if [ -d /Applications/Xcode_16.app ]; then
+            sudo xcode-select -s /Applications/Xcode_16.app
+          else
+            LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+            echo "未找到 Xcode_16，改用 $LATEST"
+            sudo xcode-select -s "$LATEST"
+          fi
+
+      - name: 显示 Xcode 版本
+        run: xcodebuild -version
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 同步 Web 资源
+        env:
+          MXQ_WWW_REPO: ${{ vars.MXQ_SRC_REPO }}
+          MXQ_WWW_PATH: ${{ vars.MXQ_SRC_PATH }}
+        run: bash scripts/sync-web-ci.sh
+
+      - name: 读取 Bundle ID
+        id: bundle
+        run: |
+          ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" ios/App/App/Info.plist 2>/dev/null || true)
+          # Info.plist 用的是 $(PRODUCT_BUNDLE_IDENTIFIER) 变量，取工程里的真实值
+          if [ "$ID" = "" ] || [ "$ID" = "$(PRODUCT_BUNDLE_IDENTIFIER)" ]; then
+            ID=$(grep -m1 "PRODUCT_BUNDLE_IDENTIFIER" ios/App/App.xcodeproj/project.pbxproj \
+                 | sed -E 's/.*= ([^;]+);/\1/')
+          fi
+          echo "id=${ID}" >> "$GITHUB_OUTPUT"
+          echo "Bundle ID: ${ID}"
+
+      # 没配证书时跳过签名，仅做编译验证（确认工程本身能编过）
+      - name: 检查签名证书是否已配置
+        id: cert
+        env:
+          P12: ${{ secrets.APPLE_CERT_P12 }}
+          CERT_PW: ${{ secrets.APPLE_CERT_PASSWORD }}
+        run: |
+          if [ -n "$P12" ]; then echo "has_cert=true" >> "$GITHUB_OUTPUT";
+          else echo "has_cert=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: 无证书：仅编译验证
+        if: steps.cert.outputs.has_cert == 'false'
+        working-directory: ios/App
+        run: |
+          xcodebuild -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            build | xcbeautify || xcodebuild -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+          echo "✅ 工程编译通过（未签名）。配置 APPLE_CERT_P12 后可出 .ipa"
+
+      - name: 导入开发者证书
+        if: steps.cert.outputs.has_cert == 'true'
+        env:
+          P12: ${{ secrets.APPLE_CERT_P12 }}
+          CERT_PW: ${{ secrets.APPLE_CERT_PASSWORD }}
+          KEY_ID: ${{ secrets.APPLE_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
+          PROFILE_NAME: ${{ vars.APPLE_PROFILE_NAME }}
+        run: |
+          echo "$P12" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p actions build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p actions build.keychain
+          security import /tmp/cert.p12 -k build.keychain \
+            -P "$CERT_PW" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: \
+            -s -k actions build.keychain
+          mkdir -p ~/Library/MobileDevice/Provisioning Profiles
+          security cms -D -i "$PROFILE_NAME.mobileprovision" \
+            > ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_NAME".mobileprovision 2>/dev/null \
+            || echo "provisioning profile 将由 xcodebuild -allowProvisioningUpdates 处理"
+
+      - name: Archive（出 .xcarchive）
+        if: steps.cert.outputs.has_cert == 'true'
+        working-directory: ios/App
+        env:
+          KEY_ID: ${{ secrets.APPLE_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
+          BUNDLE_ID: ${{ steps.bundle.outputs.id }}
+        run: |
+          xcodebuild -scheme App -configuration Release \
+            -archivePath build/MXQStore.xcarchive \
+            -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID" \
+            archive
+
+      - name: 导出 .ipa
+        if: steps.cert.outputs.has_cert == 'true'
+        working-directory: ios/App
+        env:
+          KEY_ID: ${{ secrets.APPLE_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
+          BUNDLE_ID: ${{ steps.bundle.outputs.id }}
+        run: |
+          mkdir -p build/export
+          xcodebuild -exportArchive \
+            -archivePath build/MXQStore.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath build/export \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID"
+
+      - name: 上传 .ipa
+        if: steps.cert.outputs.has_cert == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mxq-store-ipa
+          path: ios/App/build/export/*.ipa
+          retention-days: 30
+          if-no-files-found: error

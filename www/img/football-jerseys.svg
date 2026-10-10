@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+  <title>Football Jerseys</title>
+  <defs>
+    <clipPath id="ball"><circle cx="120" cy="120" r="112"/></clipPath>
+  </defs>
+  <circle cx="120" cy="120" r="112" fill="#ffffff" stroke="#111111" stroke-width="7"/>
+  <g clip-path="url(#ball)">
+    <line x1="120.0" y1="74.0" x2="120.0" y2="66.0"/><line x1="163.75" y1="105.79" x2="171.36" y2="103.31"/><line x1="147.04" y1="157.21" x2="151.74" y2="163.69"/><line x1="92.96" y1="157.21" x2="88.26" y2="163.69"/><line x1="76.25" y1="105.79" x2="68.64" y2="103.31"/>
+    <polygon points="120.0,66.0 80.06,36.98 95.31,-9.98 144.69,-9.98 159.94,36.98" fill="#ffffff" stroke="#111111" stroke-width="6" stroke-linejoin="round"/><polygon points="171.36,103.31 186.61,56.36 235.99,56.36 251.25,103.31 211.3,132.33" fill="#ffffff" stroke="#111111" stroke-width="6" stroke-linejoin="round"/><polygon points="151.74,163.69 201.11,163.69 216.37,210.64 176.43,239.67 136.48,210.64" fill="#ffffff" stroke="#111111" stroke-width="6" stroke-linejoin="round"/><polygon points="88.26,163.69 103.52,210.64 63.57,239.67 23.63,210.64 38.89,163.69" fill="#ffffff" stroke="#111111" stroke-width="6" stroke-linejoin="round"/><polygon points="68.64,103.31 28.7,132.33 -11.25,103.31 4.01,56.36 53.39,56.36" fill="#ffffff" stroke="#111111" stroke-width="6" stroke-linejoin="round"/>
+    <polygon points="120.0,74.0 163.75,105.79 147.04,157.21 92.96,157.21 76.25,105.79" fill="#111111" stroke="#111111" stroke-width="6" stroke-linejoin="round"/>
+  </g>
+  <circle cx="120" cy="120" r="112" fill="none" stroke="#111111" stroke-width="7"/>
+</svg>

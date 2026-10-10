@@ -1,0 +1,22 @@
+node_modules/
+.DS_Store
+
+# 构建产物
+ios/App/build/
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/App/capacitor.config.json.ts
+ios/App/App/config.xml
+android/app/build/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.config.json.ts
+android/capacitor-cordova-android-plugins/
+android/.gradle/
+
+# 签名材料：绝不能提交
+*.p12
+*.mobileprovision
+*.keystore
+*.jks
+ios/App/ExportOptions.plist
