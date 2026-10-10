@@ -115,7 +115,7 @@ jobs:
           gh release create apk-debug-latest \
             android/app/build/outputs/apk/debug/app-debug.apk \
             --title "MXQ Store APK (debug)" \
-            --notes "自动构建 · 含 apiUrl 修复与心愿单 #8（前台版本 20261010i）" \
+            --notes "自动构建 · App 端 9 处图片/API 同源修复（前台版本 20261011a）" \
             --prerelease
 
       # Release 未签名包：出包慢且需另行签名，失败不影响 debug 结果

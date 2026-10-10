@@ -2014,7 +2014,9 @@ const imageUrl = (value, width) => {
       if (width && /(^|\.)frgimages\.com$/i.test(host)) {
         const u = new URL(raw)
         u.searchParams.set('w', String(Math.round(width)))
-        return `/img/${u.host}${u.pathname}${u.search}`
+        // API_BASE 前缀：Capacitor 壳里相对 /img/ 会落到壳本地 origin 404（App 商品图全空白的根因）；
+        // Web 环境 API_BASE 为空串，拼出的字符串与原来逐字节一致，零行为变化。
+        return `${API_BASE}/img/${u.host}${u.pathname}${u.search}`
       }
       // M2（P0）：商品主图图床 ueeshop.ly200-cdn.com 同样收编进 /img/ 同域代理。
       // 原先直连外链 = 第三方可用性/带宽风险，且完全绕过 Cloudflare 边缘缓存。
@@ -2043,7 +2045,7 @@ const imageUrl = (value, width) => {
     return viaProxy ? toSameOriginProxy(sized) : sized
   }
   // 云存储私有对象：读卖家台写入 cover_data 的图片字节（签名 URL 有 1 小时上限且服务端不可代签）
-  return `/api/store/group-cover?path=${encodeURIComponent(raw)}`
+  return `${API_BASE}/api/store/group-cover?path=${encodeURIComponent(raw)}`
 }
 
 /**
@@ -2056,7 +2058,8 @@ const imageUrl = (value, width) => {
 function toSameOriginProxy(absoluteUrl) {
   try {
     const u = new URL(absoluteUrl)
-    return `/img/${u.host}${u.pathname}${u.search}`
+    // 同 imageUrl：壳内加 API_BASE 前缀指回线上域，Web 环境为空串不变
+    return `${API_BASE}/img/${u.host}${u.pathname}${u.search}`
   } catch {
     return absoluteUrl
   }
@@ -2251,7 +2254,9 @@ function fetchRetry(url, retries = 2, timeoutMs = 25000) {
   const attempt = (n) => {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), timeoutMs)
-    return fetch(url, { signal: ctrl.signal })
+    // 壳内把相对路径指回线上域（启动 catalog/config 就走这里，漏前缀=App 首屏全挂）
+    const target = url.startsWith('/') ? apiUrl(url) : url
+    return fetch(target, { signal: ctrl.signal })
       .finally(() => clearTimeout(timer))
       .catch((error) => {
         if (n < retries) return attempt(n + 1)
@@ -2273,7 +2278,7 @@ async function load() {
         .then((response) => response.json())
         .catch(() => null),
       // Trending Collections 轮播数据（联盟页横滑卡片，非核心数据失败不阻断启动）
-      fetch('/assets/trending-collections.json?v=20260927d')
+      fetch(apiUrl('/assets/trending-collections.json?v=20260927d'))
         .then((response) => response.json())
         .catch(() => ({})),
     ])
@@ -3019,8 +3024,12 @@ const guestTokenFor = (orderNo) => String(state.guestTokens[String(orderNo || ''
  */
 const API_BASE = (() => {
   const origin = location.origin || ''
-  // Capacitor / cordova 壳：origin 是 https://localhost 或 capacitor://localhost
-  if (!/^https?:\/\//i.test(origin)) {
+  // Capacitor 壳的两种 origin：默认 capacitor://localhost（非 http(s)），
+  // 以及 capacitor.config.json 配 androidScheme/iosScheme=https 后的 https://localhost
+  //（无端口！开发用的 http://localhost:8000 带端口，必须排除，否则本地开发会误指线上）。
+  const isShell =
+    !/^https?:\/\//i.test(origin) || /^https?:\/\/(localhost|127\.0\.0\.1)\/?$/i.test(origin)
+  if (isShell) {
     const injected = document.querySelector('meta[name="mxq-api-base"]')?.content?.trim()
     return injected || 'https://mxqshop.to'
   }
@@ -3892,7 +3901,7 @@ let LPOP = { open: false, expanded: '', queries: {} }
 let US_CITIES = null
 async function ensureUsCities() {
   if (US_CITIES) return US_CITIES
-  US_CITIES = await fetch('/data/us-cities.json').then((response) => response.json())
+  US_CITIES = await fetch(apiUrl('/data/us-cities.json')).then((response) => response.json())
   return US_CITIES
 }
 
@@ -10155,7 +10164,7 @@ function loadImgIndex() {
     // 索引跟着 app.js 的 ?v= 走：索引重建后版本号一变，浏览器就不会再吃 1 小时的旧缓存
     const src = document.querySelector('script[src*="/app.js"]')?.getAttribute('src') || ''
     const v = (src.match(/[?&]v=([^&]+)/) || [])[1] || ''
-    IMG_INDEX_PROMISE = fetch(`/data/image-index.json${v ? `?v=${v}` : ''}`)
+    IMG_INDEX_PROMISE = fetch(apiUrl(`/data/image-index.json${v ? `?v=${v}` : ''}`))
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`image index ${res.status}`))))
       .then((data) => {
         IMG_INDEX = data
@@ -11736,7 +11745,7 @@ function flushTelemetry() {
   for (const entry of batch) {
     const body = JSON.stringify({ ...entry, ...meta() })
     try {
-      if (navigator.sendBeacon && navigator.sendBeacon('/api/store/telemetry', new Blob([body], { type: 'application/json' }))) continue
+      if (navigator.sendBeacon && navigator.sendBeacon(apiUrl('/api/store/telemetry'), new Blob([body], { type: 'application/json' }))) continue
     } catch { /* 落到 fetch */ }
     try {
       fetch(apiUrl('/api/store/telemetry'), { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(() => {})

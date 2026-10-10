@@ -55,6 +55,8 @@ if [ -x node_modules/.bin/capacitor ]; then
 else
   CAP="npx --yes @capacitor/cli"
 fi
+# 同时同步 iOS 与 Android，确保两个原生工程的 public/ 都拿到最新 Web 资源
+NODE_PATH="$APP_DIR/node_modules" $CAP sync ios
 NODE_PATH="$APP_DIR/node_modules" $CAP sync android
 
 echo "✅ Web 资源同步完成"
