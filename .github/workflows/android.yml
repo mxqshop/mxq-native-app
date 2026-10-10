@@ -34,7 +34,14 @@ jobs:
         run: yes | sdkmanager --licenses >/dev/null || true
 
       - name: 安装 API 36 平台与构建工具
-        run: sdkmanager "platforms;android-36" "build-tools;35.0.0" "platform-tools"
+        run: sdkmanager "platforms;android-36" "platform-tools"
+
+      - name: 验证 SDK 环境
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          sdkmanager --list_installed | grep -E "platforms;android-36" || \
+            echo "⚠️ 未检测到 API 36，AGP 可能会自动下载"
+          java -version
 
       - name: 缓存 Gradle
         uses: actions/cache@v4
@@ -62,19 +69,8 @@ jobs:
         run: |
           bash scripts/sync-web-ci.sh
 
-      - name: 构建 Release APK（未签名）
-        working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
-
-      - name: 上传 APK 构件
-        uses: actions/upload-artifact@v4
-        with:
-          name: mxq-store-apk-unsigned
-          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
-          retention-days: 30
-          if-no-files-found: error
-
-      - name: 构建 Debug APK（可直接安装测试）
+      # 先出 Debug APK：可直接安装测试，最快拿到能用的包
+      - name: 构建 Debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
@@ -85,3 +81,17 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
           if-no-files-found: error
+
+      # Release 未签名包：出包慢且需另行签名，失败不影响 debug 结果
+      - name: 构建 Release APK（未签名）
+        working-directory: android
+        continue-on-error: true
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: 上传 Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mxq-store-apk-unsigned
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 30
+          if-no-files-found: ignore
