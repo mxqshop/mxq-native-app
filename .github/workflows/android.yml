@@ -10,6 +10,8 @@ jobs:
   build:
     name: 构建 APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 用于把 APK 发布到 Release（公开下载）
 
     steps:
       - name: 检出代码
@@ -102,6 +104,19 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
           if-no-files-found: error
+
+      # 发布到 Release：公开库附件可免令牌直接下载（绕开 artifact 接口鉴权限制）
+      - name: 发布 Debug APK 到 Release（公开下载）
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete apk-debug-latest --yes || true
+          gh release create apk-debug-latest \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            --title "MXQ Store APK (debug)" \
+            --notes "自动构建 · 含 apiUrl 修复与心愿单 #8（前台版本 20261010i）" \
+            --prerelease
 
       # Release 未签名包：出包慢且需另行签名，失败不影响 debug 结果
       - name: 构建 Release APK（未签名）
