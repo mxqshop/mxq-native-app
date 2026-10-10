@@ -58,14 +58,17 @@ jobs:
           echo "Bundle ID: ${ID}"
 
       # 没配证书时跳过签名，仅做编译验证（确认工程本身能编过）
-      - name: 检查签名证书是否已配置
+      - name: 检查签名/上传密钥是否已配置
         id: cert
         env:
           P12: ${{ secrets.APPLE_CERT_P12 }}
           CERT_PW: ${{ secrets.APPLE_CERT_PASSWORD }}
+          P8: ${{ secrets.APPLE_API_KEY_P8 }}
         run: |
           if [ -n "$P12" ]; then echo "has_cert=true" >> "$GITHUB_OUTPUT";
           else echo "has_cert=false" >> "$GITHUB_OUTPUT"; fi
+          if [ -n "$P8" ]; then echo "has_p8=true" >> "$GITHUB_OUTPUT";
+          else echo "has_p8=false" >> "$GITHUB_OUTPUT"; fi
 
       - name: 无证书：仅编译验证
         if: steps.cert.outputs.has_cert == 'false'
@@ -99,6 +102,14 @@ jobs:
           security cms -D -i "$PROFILE_NAME.mobileprovision" \
             > ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_NAME".mobileprovision 2>/dev/null \
             || echo "provisioning profile 将由 xcodebuild -allowProvisioningUpdates 处理"
+
+      - name: 解码 App Store Connect API Key (.p8)
+        if: steps.cert.outputs.has_p8 == 'true'
+        env:
+          P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          mkdir -p "$HOME/private_keys"
+          echo "$P8" > "$HOME/private_keys/AuthKey_${{ secrets.APPLE_KEY_ID }}.p8"
 
       - name: Archive（出 .xcarchive）
         if: steps.cert.outputs.has_cert == 'true'
@@ -140,3 +151,18 @@ jobs:
           path: ios/App/build/export/*.ipa
           retention-days: 30
           if-no-files-found: error
+
+      # 上传到 App Store Connect（TestFlight / 审核队列）
+      # 注：若 runner 的 Xcode 已移除 altool（Xcode 16+），此步会失败，可改用 Transporter 或专用 action
+      - name: 上传到 App Store Connect (TestFlight)
+        if: steps.cert.outputs.has_cert == 'true' && steps.cert.outputs.has_p8 == 'true'
+        continue-on-error: true
+        env:
+          KEY_ID: ${{ secrets.APPLE_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
+        run: |
+          xcrun altool --upload-app \
+            -f ios/App/build/export/*.ipa \
+            --apiKey "$KEY_ID" \
+            --apiIssuer "$ISSUER_ID" \
+            --apiPrivateKey "$HOME/private_keys"
