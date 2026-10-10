@@ -166,3 +166,28 @@ jobs:
             --apiKey "$KEY_ID" \
             --apiIssuer "$ISSUER_ID" \
             --apiPrivateKey "$HOME/private_keys"
+
+      - name: 读取 App 版本号
+        id: ver
+        run: |
+          V=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" ios/App/App/Info.plist 2>/dev/null || echo "1.0.0")
+          echo "version=${V}" >> "$GITHUB_OUTPUT"
+          echo "App 版本: ${V}"
+
+      # 直接提交 App Store 审核（而非仅进 TestFlight）：默认关闭，
+      # 需在仓库 Secrets 设 IOS_SUBMIT_FOR_REVIEW=true 才执行；失败不影响构建（continue-on-error）。
+      # 前置：App Store Connect 中 to.mxqshop.app 的该版本已建好且必填元数据/截图齐全，否则提交会被拒。
+      - name: 提交 App Store 审核
+        if: >-
+          steps.cert.outputs.has_cert == 'true' &&
+          steps.cert.outputs.has_p8 == 'true' &&
+          secrets.IOS_SUBMIT_FOR_REVIEW == 'true'
+        continue-on-error: true
+        env:
+          APPLE_KEY_ID: ${{ secrets.APPLE_KEY_ID }}
+          APPLE_ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
+          BUNDLE_ID: ${{ steps.bundle.outputs.id }}
+          APP_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          export APPLE_API_KEY_P8="$HOME/private_keys/AuthKey_${{ secrets.APPLE_KEY_ID }}.p8"
+          python3 scripts/submit-appstore-review.py

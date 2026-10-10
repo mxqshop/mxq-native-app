@@ -173,7 +173,7 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
-      # 上传到 Google Play（需配置 PLAY_SERVICE_ACCOUNT_JSON；默认进 internal 轨道）
+      # 上传到 Google Play（需配置 PLAY_SERVICE_ACCOUNT_JSON；默认进 production 轨道，审核通过后直接上架）
       - name: 上传到 Google Play
         if: steps.android-secrets.outputs.has_play == 'true'
         continue-on-error: true
@@ -182,5 +182,5 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: to.mxqshop.app
           releaseFiles: android/app/build/outputs/bundle/release/*.aab
-          track: internal
+          track: production
           status: completed

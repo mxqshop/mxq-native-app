@@ -20,15 +20,22 @@ if [ -n "$REPO" ]; then
   if git clone --depth 1 "$REPO" "$TMP/src" 2>/dev/null; then
     SRC="$TMP/src/$SRC_PATH"
     if [ -f "$SRC/app.js" ]; then
-      echo "  ✅ 克隆成功，同步 $SRC"
-      rm -rf "$APP_DIR/www"
-      mkdir -p "$APP_DIR/www"
-      for f in index.html app.js styles.css manifest.webmanifest sw.js favicon.ico robots.txt sitemap.xml; do
-        [ -f "$SRC/$f" ] && cp "$SRC/$f" "$APP_DIR/www/"
-      done
-      for d in img vendor; do
-        [ -d "$SRC/$d" ] && cp -r "$SRC/$d" "$APP_DIR/www/"
-      done
+      # 关键防护：上游若未含 App 壳修复（API_BASE}/img 标记），用它覆盖会破坏
+      # App 内图片/API 同源逻辑，导致商品/球队图全白。此时放弃覆盖，
+      # 保留仓库内已含修复的 www 快照（mxq-native-app 提交里就是带修复的版本）。
+      if grep -q 'API_BASE}/img' "$SRC/app.js"; then
+        echo "  ✅ 克隆成功且含 App 壳修复（API_BASE}/img），同步 $SRC"
+        rm -rf "$APP_DIR/www"
+        mkdir -p "$APP_DIR/www"
+        for f in index.html app.js styles.css manifest.webmanifest sw.js favicon.ico robots.txt sitemap.xml; do
+          [ -f "$SRC/$f" ] && cp "$SRC/$f" "$APP_DIR/www/"
+        done
+        for d in img vendor; do
+          [ -d "$SRC/$d" ] && cp -r "$SRC/$d" "$APP_DIR/www/"
+        done
+      else
+        echo "  ⚠️ 上游缺少 App 壳修复（无 API_BASE}/img 标记），放弃覆盖，保留仓库内 www 快照"
+      fi
     else
       echo "  ⚠️ 仓库里没找到 $SRC_PATH/app.js，改用仓库内快照"
     fi
