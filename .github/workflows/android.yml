@@ -90,7 +90,10 @@ jobs:
       # 先出 Debug APK：可直接安装测试，最快拿到能用的包
       - name: 构建 Debug APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          # Gradle 版本/JVM 信息，便于排查
+          ./gradlew --version 2>&1 | head -12
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: 上传 Debug APK
         uses: actions/upload-artifact@v5
